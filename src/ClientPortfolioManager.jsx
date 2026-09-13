@@ -395,10 +395,10 @@ function SplashScreen({ onBegin }) {
 	return (
 		<div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
 			<div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
+			<Moon />
 			<StarField />
 			<CloudLayer />
 			<RainLayer />
-			<Moon />
 			<GothamSkyline className="absolute bottom-0 left-0 h-1/2 w-full opacity-90" />
 			<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
 			<div className="relative z-10 flex flex-col items-center gap-4 px-6 text-center">
@@ -460,10 +460,10 @@ function CinematicScreen({ elapsed, onSkip }) {
 	return (
 		<div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
 			<div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-black to-black" />
+			<Moon phase="🌑" glow={false} />
 			<StarField />
 			<CloudLayer />
 			<RainLayer />
-			<Moon phase="🌑" glow={false} />
 			<audio
 				ref={narrationRef}
 				src="/audio/ElevenLabs_Text_to_Speech_audio.mp3"
@@ -501,10 +501,10 @@ function RoleSelectScreen({ onManager, onClient }) {
 	return (
 		<div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center gap-8 overflow-hidden px-6 py-10 text-center">
 			<div className="absolute inset-0 bg-gradient-to-b from-slate-950 to-black" />
+			<Moon />
 			<StarField />
 			<CloudLayer />
 			<RainLayer />
-			<Moon />
 			<GothamSkyline className="absolute bottom-0 left-0 h-1/3 w-full opacity-60" />
 			<div className="relative z-10 flex flex-col items-center gap-2">
 				<h2 className="font-arcade text-sm text-amber-400 sm:text-base">CHOOSE YOUR ROLE</h2>
@@ -1004,7 +1004,6 @@ export default function ClientPortfolioManager() {
 			border-radius: 200px;
 			-moz-border-radius: 200px;
 			-webkit-border-radius: 200px;
-			opacity: 0.2;
 			
 			position: absolute;
 			left: 100%;
@@ -1034,16 +1033,17 @@ export default function ClientPortfolioManager() {
 
 		/*Time to animate*/
 		.x1 {
-			top: 8%;
+			top: 12%;
 			-webkit-animation: moveclouds 15s linear infinite;
 			-moz-animation: moveclouds 15s linear infinite;
 			-o-animation: moveclouds 15s linear infinite;
-			opacity: 0.2;
+			animation: moveclouds 15s linear infinite;
+			animation-delay: -2.5s;
 		}
 
 		/*variable speed, opacity, and position of clouds for realistic effect*/
 		.x2 {
-			top: 20%;
+			top: 38%;
 			
 			-webkit-transform: scale(0.6);
 			-moz-transform: scale(0.6);
@@ -1055,11 +1055,12 @@ export default function ClientPortfolioManager() {
 			-webkit-animation: moveclouds 25s linear infinite;
 			-moz-animation: moveclouds 25s linear infinite;
 			-o-animation: moveclouds 25s linear infinite;
-			opacity: 0.2;
+			animation: moveclouds 25s linear infinite;
+			animation-delay: -14s;
 		}
 
 		.x3 {
-			top: 32%;
+			top: 21%;
 			
 			-webkit-transform: scale(0.8);
 			-moz-transform: scale(0.8);
@@ -1069,11 +1070,12 @@ export default function ClientPortfolioManager() {
 			-webkit-animation: moveclouds 20s linear infinite;
 			-moz-animation: moveclouds 20s linear infinite;
 			-o-animation: moveclouds 20s linear infinite;
-			opacity: 0.2;
+			animation: moveclouds 20s linear infinite;
+			animation-delay: -7s;
 		}
 
 		.x4 {
-			top: 44%;
+			top: 64%;
 			
 			-webkit-transform: scale(0.75);
 			-moz-transform: scale(0.75);
@@ -1083,11 +1085,12 @@ export default function ClientPortfolioManager() {
 			-webkit-animation: moveclouds 18s linear infinite;
 			-moz-animation: moveclouds 18s linear infinite;
 			-o-animation: moveclouds 18s linear infinite;
-			opacity: 0.2;
+			animation: moveclouds 18s linear infinite;
+			animation-delay: -11.5s;
 		}
 
 		.x5 {
-			top: 56%;
+			top: 49%;
 			
 			-webkit-transform: scale(0.8);
 			-moz-transform: scale(0.8);
@@ -1097,7 +1100,8 @@ export default function ClientPortfolioManager() {
 			-webkit-animation: moveclouds 20s linear infinite;
 			-moz-animation: moveclouds 20s linear infinite;
 			-o-animation: moveclouds 20s linear infinite;
-			opacity: 0.2;
+			animation: moveclouds 20s linear infinite;
+			animation-delay: -3.5s;
 		}
 
 		@-webkit-keyframes moveclouds {
