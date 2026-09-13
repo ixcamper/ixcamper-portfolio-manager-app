@@ -53,7 +53,17 @@ const STARS = [
 	[8, 16, 2], [16, 28, 1], [24, 11, 1], [31, 22, 2], [39, 9, 1], [47, 19, 1],
 	[55, 13, 2], [63, 27, 1], [71, 8, 1], [79, 21, 2], [88, 14, 1], [94, 31, 1],
 	[12, 42, 1], [21, 35, 1], [36, 39, 1], [51, 34, 1], [68, 44, 1], [83, 38, 1],
+	[4, 7, 1], [11, 23, 1], [19, 6, 2], [28, 16, 1], [34, 31, 1], [43, 5, 1],
+	[52, 24, 1], [59, 6, 1], [67, 18, 2], [75, 34, 1], [85, 5, 1], [91, 24, 1],
+	[97, 12, 2], [6, 36, 1], [15, 48, 1], [27, 45, 2], [44, 43, 1], [58, 40, 1],
+	[73, 46, 1], [89, 43, 2], [98, 39, 1],
 ];
+
+const DENSE_STARS = Array.from({ length: 96 }, (_, index) => [
+		((index * 47 + 13) % 96) + 2,
+		((index * 29 + 7) % 55) + 4,
+		index % 13 === 0 ? 2 : 1,
+	]);
 
 const fmtUSD0 = (n) =>
 	(n || 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -317,17 +327,17 @@ function GothamSkyline({ className = "" }) {
 function StarField() {
 	return (
 		<div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden" aria-hidden="true">
-			{STARS.map(([left, top, size], index) => (
+			{[...STARS, ...DENSE_STARS].map(([left, top, size], index) => (
 				<span
 					key={index}
-					className="absolute rounded-full bg-amber-100"
+					className={`star-point absolute rounded-full bg-amber-100 ${size === 2 ? "star-bright" : ""}`}
 					style={{
 						left: `${left}%`,
 						top: `${top}%`,
 						width: `${size}px`,
 						height: `${size}px`,
-						opacity: size === 2 ? 0.8 : 0.55,
 						boxShadow: size === 2 ? "0 0 5px rgba(253,230,138,.7)" : undefined,
+						animationDelay: `${-((index * 0.37) % 2.8)}s`,
 					}}
 				/>
 			))}
@@ -972,6 +982,12 @@ export default function ClientPortfolioManager() {
         .blink-cursor { animation: blinker 1s steps(1) infinite; }
         @keyframes fadeline { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .fade-line { animation: fadeline 0.6s ease; }
+		@keyframes starTwinkle {
+			0%, 100% { opacity: 0.25; transform: scale(0.8); }
+			50% { opacity: 0.75; transform: scale(1.2); }
+		}
+		.star-point { animation: starTwinkle 2.8s ease-in-out infinite; }
+		.star-bright { animation-duration: 2.2s; box-shadow: 0 0 5px rgba(253,230,138,.7); }
         
 		#clouds{
 			position: absolute;
@@ -1147,7 +1163,7 @@ export default function ClientPortfolioManager() {
         .bat-fly { animation: batSwoop 6.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; top: 8%; left: 0; }
         .bat-fly-2 { animation: batSwoop2 8.8s cubic-bezier(0.45, 0, 0.55, 1) 2.2s infinite; top: 4%; left: 0; }
         @media (prefers-reduced-motion: reduce) {
-          .lightning-flash, .bat-fly, .bat-fly-2, .rain-drop { animation: none !important; }
+		  .lightning-flash, .bat-fly, .bat-fly-2, .rain-drop, .star-point { animation: none !important; opacity: 0.55; transform: none; }
           .blink-cursor { animation: none !important; opacity: 1; }
           .fade-line { animation: none !important; }
         }
