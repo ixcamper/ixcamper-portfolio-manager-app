@@ -792,9 +792,9 @@ export default function ClientPortfolioManager() {
             </div>
 
             {/* Body */}
-            <div className="relative z-10 flex flex-col md:flex-row">
+            <div className="relative z-10 flex min-h-0 flex-1 flex-col md:flex-row">
               {/* Rail */}
-              <div className="w-full border-b border-amber-500/10 bg-slate-900/50 md:w-72 md:border-b-0 md:border-r">
+              <div className="w-full border-b border-amber-500/10 bg-slate-900/50 md:flex md:w-72 md:flex-col md:border-b-0 md:border-r">
                 <div className="p-3">
                   <div className="relative">
                     <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -806,7 +806,7 @@ export default function ClientPortfolioManager() {
                     />
                   </div>
                 </div>
-                <div className="max-h-[70vh] overflow-y-auto">
+                <div className="overflow-y-auto md:min-h-0 md:flex-1 md:max-h-none">
                   {filteredClients.length === 0 && (
                     <div className="px-4 py-6 text-sm text-slate-500">No clients match your search.</div>
                   )}
@@ -833,7 +833,7 @@ export default function ClientPortfolioManager() {
               </div>
 
               {/* Detail panel */}
-              <div className="flex-1 p-5">
+              <div className="min-h-0 flex-1 overflow-y-auto p-5">
                 {!selectedClient ? (
                   <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-2 text-center">
                     <span className="text-4xl">🦇</span>
