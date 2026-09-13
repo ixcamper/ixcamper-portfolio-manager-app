@@ -311,16 +311,22 @@ function GothamSkyline({ className = "" }) {
    Pre-game screens
 --------------------------------------------------------------- */
 
+function Moon({ phase = "🌖", glow = true }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`absolute right-8 top-[102px] flex h-20 w-20 items-center justify-center text-6xl leading-none ${glow ? "drop-shadow-[0_0_18px_rgba(253,230,138,0.75)]" : ""}`}
+    >
+      {phase}
+    </div>
+  );
+}
+
 function SplashScreen({ onBegin }) {
   return (
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
-      <div
-        aria-hidden="true"
-        className="absolute right-8 top-8 flex h-20 w-20 items-center justify-center text-6xl leading-none drop-shadow-[0_0_18px_rgba(253,230,138,0.75)]"
-      >
-        🌖
-      </div>
+      <Moon />
       <GothamSkyline className="absolute bottom-0 left-0 h-1/2 w-full opacity-90" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
       <div className="relative z-10 flex flex-col items-center gap-4 px-6 text-center">
@@ -366,6 +372,7 @@ function CinematicScreen({ elapsed, onSkip }) {
   return (
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-black to-black" />
+      <Moon phase="🌑" glow={false} />
       <div aria-hidden="true" className="lightning-flash absolute inset-0 bg-slate-100" />
       <GothamSkyline className="absolute bottom-0 left-0 h-1/2 w-full opacity-70" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
