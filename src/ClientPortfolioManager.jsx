@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Trash2, Pencil, X, Check, Users, Wallet, LogOut, SkipForward } from "lucide-react";
+import { Search, Plus, Trash2, Pencil, X, Check, Users, Wallet, LogOut, SkipForward, MessageCircle, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 /* ---------------------------------------------------------------
@@ -448,6 +448,130 @@ function ClientSelectScreen({ clients, onPick, onBack }) {
   );
 }
 
+function ChatWindow({ clientId, clientName, role }) {
+  const storageKey = `wayne-wealth-chat-${clientId}`;
+  const senderName = role === "manager" ? "Portfolio manager" : clientName;
+  const [messages, setMessages] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem(storageKey) || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [draft, setDraft] = useState("");
+  const [isOpen, setIsOpen] = useState(true);
+
+  useEffect(() => {
+    const readMessages = () => {
+      try {
+        return JSON.parse(window.localStorage.getItem(storageKey) || "[]");
+      } catch {
+        return [];
+      }
+    };
+
+    setMessages(readMessages());
+
+    const handleStorage = (event) => {
+      if (event.key !== storageKey) return;
+      setMessages(readMessages());
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [storageKey]);
+
+  function sendMessage() {
+    const text = draft.trim();
+    if (!text) return;
+
+    const nextMessages = [
+      ...messages,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        sender: role,
+        senderName,
+        text,
+        sentAt: new Date().toISOString(),
+      },
+    ];
+    setMessages(nextMessages);
+    setDraft("");
+    window.localStorage.setItem(storageKey, JSON.stringify(nextMessages));
+  }
+
+  return (
+    <section className={`fixed bottom-5 right-5 z-40 flex w-[450px] max-w-[calc(100vw-2rem)] flex-col rounded-md border border-slate-700 bg-slate-900/95 shadow-2xl shadow-black/50 ${isOpen ? "h-[600px]" : "h-auto"}`}>
+      <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <MessageCircle size={15} className="text-amber-400" />
+          <div>
+            <h3 className="font-arcade text-[11px] text-amber-400">1:1 DIRECT LINE</h3>
+            <p className="text-xs text-slate-500">Only you and {role === "manager" ? clientName : "your portfolio manager"}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Live across tabs
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsOpen((value) => !value)}
+            aria-label={isOpen ? "Collapse chat" : "Expand chat"}
+            className="rounded p-1 text-slate-400 transition hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            {isOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
+        </div>
+      </div>
+
+      {isOpen && <>
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+        {messages.length === 0 ? (
+          <p className="m-auto text-center text-xs text-slate-500">No messages yet. Start the conversation.</p>
+        ) : (
+          messages.map((message) => {
+            const ownMessage = message.sender === role;
+            return (
+              <div key={message.id} className={`flex ${ownMessage ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-md border px-3 py-2 ${ownMessage ? "border-amber-400/30 bg-amber-500/10" : "border-slate-700 bg-slate-950"}`}>
+                  <div className="mb-1 flex items-center gap-2 text-[10px] text-slate-500">
+                    <span className={ownMessage ? "text-amber-400" : "text-slate-300"}>{message.senderName}</span>
+                    <time dateTime={message.sentAt}>{new Date(message.sentAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-sm text-slate-200">{message.text}</p>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="flex gap-2 border-t border-slate-700 p-3">
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") sendMessage();
+          }}
+          placeholder="Write a message..."
+          aria-label={`Message ${role === "manager" ? clientName : "portfolio manager"}`}
+          className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        />
+        <button
+          type="button"
+          onClick={sendMessage}
+          aria-label="Send message"
+          className="rounded-md border border-amber-400 bg-amber-500 px-3 text-slate-950 transition hover:bg-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+        >
+          <Send size={15} />
+        </button>
+      </div>
+      </>}
+    </section>
+  );
+}
+
 function ClientReadOnlyScreen({ client, onBack, onExit }) {
   const chartData = useMemo(() => getAssetClassAllocation(client), [client]);
   const chartTotal = chartData.reduce((s, r) => s + r.value, 0);
@@ -589,6 +713,7 @@ function ClientReadOnlyScreen({ client, onBack, onExit }) {
           </div>
         </div>
       </div>
+      <ChatWindow clientId={client.id} clientName={client.name} role="client" />
     </div>
   );
 }
@@ -1315,6 +1440,7 @@ export default function ClientPortfolioManager() {
                         </div>
                       </div>
                     </div>
+                    <ChatWindow clientId={selectedClient.id} clientName={selectedClient.name} role="manager" />
                   </div>
                 )}
               </div>
