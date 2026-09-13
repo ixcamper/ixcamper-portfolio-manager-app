@@ -104,9 +104,9 @@ const initialClients = [
     risk: "Aggressive",
     cash: 18000,
     holdings: [
-      { id: "h-13", ticker: "TSLA", name: "Tesla Inc.", category: "US Equities", shares: 95, price: 248.5, cost: 185.0 },
+      { id: "h-13", ticker: "TSLA", name: "Tesla Inc.", category: "US Equities", shares: 95, price: 248.5, cost: 280.0 },
       { id: "h-14", ticker: "AMD", name: "Advanced Micro Devices", category: "US Equities", shares: 140, price: 168.2, cost: 112.5 },
-      { id: "h-15", ticker: "SOL", name: "Solana", category: "Crypto", shares: 260, price: 145.0, cost: 88.0 },
+      { id: "h-15", ticker: "SOL", name: "Solana", category: "Crypto", shares: 260, price: 145.0, cost: 170.0 },
     ],
   },
   {
@@ -152,8 +152,8 @@ const initialClients = [
     cash: 12500,
     holdings: [
       { id: "h-24", ticker: "NVDA", name: "NVIDIA Corp.", category: "US Equities", shares: 110, price: 118.4, cost: 72.0 },
-      { id: "h-25", ticker: "COIN", name: "Coinbase Global", category: "US Equities", shares: 55, price: 245.0, cost: 142.0 },
-      { id: "h-26", ticker: "BTC", name: "Bitcoin", category: "Crypto", shares: 0.6, price: 62500, cost: 39000 },
+      { id: "h-25", ticker: "COIN", name: "Coinbase Global", category: "US Equities", shares: 55, price: 245.0, cost: 290.0 },
+      { id: "h-26", ticker: "BTC", name: "Bitcoin", category: "Crypto", shares: 0.6, price: 62500, cost: 70000 },
     ],
   },
   {
@@ -199,7 +199,7 @@ const initialClients = [
     cash: 22000,
     holdings: [
       { id: "h-35", ticker: "AAPL", name: "Apple Inc.", category: "US Equities", shares: 145, price: 227.5, cost: 174.0 },
-      { id: "h-36", ticker: "NFLX", name: "Netflix Inc.", category: "US Equities", shares: 28, price: 685.0, cost: 420.0 },
+      { id: "h-36", ticker: "NFLX", name: "Netflix Inc.", category: "US Equities", shares: 28, price: 685.0, cost: 760.0 },
       { id: "h-37", ticker: "BTC", name: "Bitcoin", category: "Crypto", shares: 0.22, price: 62500, cost: 36000 },
     ],
   },
@@ -262,9 +262,23 @@ function ImpactBadge({ value, pct, className = "" }) {
   const positive = value >= 0;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 font-semibold ${positive ? "text-amber-400" : "text-fuchsia-400"} ${className}`}
+      className={`inline-flex items-center gap-1.5 font-semibold ${positive ? "text-emerald-400" : "text-red-400"} ${className}`}
     >
-      <span aria-hidden="true">{positive ? "\u{1F987}" : "\u{1F0CF}"}</span>
+      {positive ? (
+        <span
+          aria-hidden="true"
+          className="inline-flex h-4 w-4 items-center justify-center rounded-[2px] border border-emerald-300 bg-emerald-500/80 text-[10px] font-black leading-none text-white shadow-[0_0_6px_rgba(52,211,153,0.65)]"
+        >
+          B
+        </span>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="inline-flex h-4 w-4 items-center justify-center rounded-[2px] border border-red-300 bg-red-500/80 text-[10px] font-black leading-none text-white shadow-[0_0_6px_rgba(248,113,113,0.65)]"
+        >
+          J
+        </span>
+      )}
       {fmtPct(pct)}
     </span>
   );
