@@ -60,10 +60,10 @@ const STARS = [
 ];
 
 const DENSE_STARS = Array.from({ length: 96 }, (_, index) => [
-		((index * 47 + 13) % 96) + 2,
-		((index * 29 + 7) % 55) + 4,
-		index % 13 === 0 ? 2 : 1,
-	]);
+	((index * 47 + 13) % 96) + 2,
+	((index * 29 + 7) % 55) + 4,
+	index % 13 === 0 ? 2 : 1,
+]);
 
 const fmtUSD0 = (n) =>
 	(n || 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
