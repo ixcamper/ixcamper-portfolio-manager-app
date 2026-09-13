@@ -284,6 +284,10 @@ function ImpactBadge({ value, pct, className = "" }) {
   );
 }
 
+function BatIcon({ className = "" }) {
+  return <img src="/bat.svg" alt="" aria-hidden="true" className={`inline-block ${className}`} />;
+}
+
 function GothamSkyline({ className = "" }) {
   return (
     <svg viewBox="0 0 1200 200" preserveAspectRatio="none" className={className} aria-hidden="true">
@@ -312,13 +316,15 @@ function SplashScreen({ onBegin }) {
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
       <div
-        className="absolute right-8 top-8 h-20 w-20 rounded-full bg-amber-100/90"
-        style={{ boxShadow: "0 0 70px 25px rgba(253,230,138,.3)" }}
-      />
+        aria-hidden="true"
+        className="absolute right-8 top-8 flex h-20 w-20 items-center justify-center text-6xl leading-none drop-shadow-[0_0_18px_rgba(253,230,138,0.75)]"
+      >
+        🌖
+      </div>
       <GothamSkyline className="absolute bottom-0 left-0 h-1/2 w-full opacity-90" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
       <div className="relative z-10 flex flex-col items-center gap-4 px-6 text-center">
-        <span className="text-6xl">🦇</span>
+        <BatIcon className="h-16 w-16 text-amber-400" />
         <h1 className="font-arcade title-glow text-xl text-amber-400 sm:text-3xl">WAYNE WEALTH ARCADE</h1>
         <p className="max-w-sm text-sm text-slate-400">A Gotham-styled trading arcade. Guard every portfolio after dark.</p>
         <button
@@ -400,7 +406,7 @@ function RoleSelectScreen({ onManager, onClient }) {
           onClick={onManager}
           className="flex flex-col items-center gap-3 rounded-xl border-2 border-amber-400/60 bg-slate-900/70 p-6 transition hover:border-amber-400 hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
         >
-          <span className="text-4xl">🦇</span>
+          <BatIcon className="h-10 w-10 text-amber-400" />
           <span className="font-arcade text-[11px] text-amber-400">PORTFOLIO MANAGER</span>
           <span className="text-xs text-slate-400">Manage every client. Add holdings, track performance, run the whole book.</span>
         </button>
@@ -955,7 +961,7 @@ export default function ClientPortfolioManager() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl" role="img" aria-label="Bat">🦇</span>
+                    <BatIcon className="h-7 w-7 text-amber-400" />
                     <span className="font-arcade title-glow text-[13px] text-amber-400 sm:text-base">WAYNE WEALTH ARCADE</span>
                   </div>
                   <div className="mt-1.5 text-xs text-slate-400">Portfolio manager: the Dark Knight himself, keeping Gotham's capital safe after dark.</div>
@@ -1093,7 +1099,7 @@ export default function ClientPortfolioManager() {
               <div className="min-h-0 flex-1 overflow-y-auto p-5">
                 {!selectedClient ? (
                   <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-2 text-center">
-                    <span className="text-4xl">🦇</span>
+                    <BatIcon className="h-10 w-10 text-amber-400" />
                     <p className="mt-2 text-slate-400">No client selected.</p>
                     <p className="text-slate-400">Choose a name from the roster, or recruit a new client to begin.</p>
                     <p className="font-arcade mt-4 text-[11px] text-amber-400">
