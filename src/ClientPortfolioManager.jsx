@@ -998,7 +998,8 @@ export default function ClientPortfolioManager() {
 
 		/*Time to finalise the cloud shape*/
 		.cloud {
-			width: 200px; height: 60px;
+			width: clamp(120px, 16vw, 200px);
+			aspect-ratio: 10 / 3;
 			background: #fff;
 			
 			border-radius: 200px;
@@ -1014,8 +1015,8 @@ export default function ClientPortfolioManager() {
 			content: '';
 			position: absolute; 
 			background: #fff;
-			width: 100px; height: 80px;
-			position: absolute; top: -15px; left: 10px;
+			width: 50%; height: 133%;
+			top: -25%; left: 5%;
 			
 			border-radius: 100px;
 			-moz-border-radius: 100px;
@@ -1027,8 +1028,8 @@ export default function ClientPortfolioManager() {
 		}
 
 		.cloud:after {
-			width: 120px; height: 120px;
-			top: -55px; left: auto; right: 15px;
+			width: 60%; height: 200%;
+			top: -92%; left: auto; right: 7.5%;
 		}
 
 		/*Time to animate*/
