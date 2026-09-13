@@ -316,7 +316,7 @@ function GothamSkyline({ className = "" }) {
 
 function StarField() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden" aria-hidden="true">
       {STARS.map(([left, top, size], index) => (
         <span
           key={index}
@@ -328,6 +328,25 @@ function StarField() {
             height: `${size}px`,
             opacity: size === 2 ? 0.8 : 0.55,
             boxShadow: size === 2 ? "0 0 5px rgba(253,230,138,.7)" : undefined,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function RainLayer() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      {Array.from({ length: 32 }, (_, index) => (
+        <span
+          key={index}
+          className="rain-drop absolute -top-16 h-10 w-px bg-slate-200/45"
+          style={{
+            left: `${(index * 37) % 101}%`,
+            animationDelay: `${-((index * 0.21) % 2.4)}s`,
+            animationDuration: `${1.2 + (index % 5) * 0.18}s`,
+            opacity: 0.22 + (index % 4) * 0.06,
           }}
         />
       ))}
@@ -355,6 +374,7 @@ function SplashScreen({ onBegin }) {
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
       <StarField />
+      <RainLayer />
       <Moon />
       <GothamSkyline className="absolute bottom-0 left-0 h-1/2 w-full opacity-90" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
@@ -418,6 +438,7 @@ function CinematicScreen({ elapsed, onSkip }) {
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-black to-black" />
       <StarField />
+      <RainLayer />
       <Moon phase="🌑" glow={false} />
       <audio
         ref={narrationRef}
@@ -457,6 +478,7 @@ function RoleSelectScreen({ onManager, onClient }) {
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center gap-8 overflow-hidden px-6 py-10 text-center">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 to-black" />
       <StarField />
+      <RainLayer />
       <Moon />
       <GothamSkyline className="absolute bottom-0 left-0 h-1/3 w-full opacity-60" />
       <div className="relative z-10 flex flex-col items-center gap-2">
@@ -935,6 +957,8 @@ export default function ClientPortfolioManager() {
         .blink-cursor { animation: blinker 1s steps(1) infinite; }
         @keyframes fadeline { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .fade-line { animation: fadeline 0.6s ease; }
+        @keyframes rainFall { from { transform: translate3d(0, -12vh, 0) rotate(16deg); } to { transform: translate3d(-7vw, 112vh, 0) rotate(16deg); } }
+        .rain-drop { animation: rainFall linear infinite; }
         @keyframes lightningflash {
           0%, 92%, 100% { opacity: 0; }
           93% { opacity: 0.5; }
@@ -979,7 +1003,7 @@ export default function ClientPortfolioManager() {
         .bat-fly { animation: batSwoop 6.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; top: 8%; left: 0; }
         .bat-fly-2 { animation: batSwoop2 8.8s cubic-bezier(0.45, 0, 0.55, 1) 2.2s infinite; top: 4%; left: 0; }
         @media (prefers-reduced-motion: reduce) {
-          .lightning-flash, .bat-fly, .bat-fly-2 { animation: none !important; opacity: 0; }
+          .lightning-flash, .bat-fly, .bat-fly-2, .rain-drop { animation: none !important; }
           .blink-cursor { animation: none !important; opacity: 1; }
           .fade-line { animation: none !important; }
         }
