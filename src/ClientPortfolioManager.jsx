@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Plus, Trash2, Pencil, X, Check, Users, Wallet, LogOut, SkipForward, MessageCircle, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
@@ -39,6 +39,7 @@ const CINEMATIC_LINES = [
   "Somewhere, chaos is already placing its bets.",
   "Prepare to take your position.",
 ];
+const CINEMATIC_DURATION_SECONDS = 16.3;
 
 const BUILDINGS = [
   { x: 0, w: 60, h: 90 }, { x: 60, w: 40, h: 130 }, { x: 100, w: 70, h: 70 }, { x: 170, w: 50, h: 150 },
@@ -46,6 +47,12 @@ const BUILDINGS = [
   { x: 510, w: 50, h: 160 }, { x: 560, w: 70, h: 110 }, { x: 630, w: 45, h: 140 }, { x: 675, w: 85, h: 95 },
   { x: 760, w: 55, h: 170 }, { x: 815, w: 65, h: 105 }, { x: 880, w: 90, h: 130 }, { x: 970, w: 50, h: 80 },
   { x: 1020, w: 75, h: 150 }, { x: 1095, w: 60, h: 100 }, { x: 1155, w: 45, h: 120 },
+];
+
+const STARS = [
+  [8, 16, 2], [16, 28, 1], [24, 11, 1], [31, 22, 2], [39, 9, 1], [47, 19, 1],
+  [55, 13, 2], [63, 27, 1], [71, 8, 1], [79, 21, 2], [88, 14, 1], [94, 31, 1],
+  [12, 42, 1], [21, 35, 1], [36, 39, 1], [51, 34, 1], [68, 44, 1], [83, 38, 1],
 ];
 
 const fmtUSD0 = (n) =>
@@ -307,6 +314,27 @@ function GothamSkyline({ className = "" }) {
   );
 }
 
+function StarField() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      {STARS.map(([left, top, size], index) => (
+        <span
+          key={index}
+          className="absolute rounded-full bg-amber-100"
+          style={{
+            left: `${left}%`,
+            top: `${top}%`,
+            width: `${size}px`,
+            height: `${size}px`,
+            opacity: size === 2 ? 0.8 : 0.55,
+            boxShadow: size === 2 ? "0 0 5px rgba(253,230,138,.7)" : undefined,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------
    Pre-game screens
 --------------------------------------------------------------- */
@@ -326,6 +354,7 @@ function SplashScreen({ onBegin }) {
   return (
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
+      <StarField />
       <Moon />
       <GothamSkyline className="absolute bottom-0 left-0 h-1/2 w-full opacity-90" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
@@ -367,12 +396,37 @@ function FlappingBat({ className = "", wingSpeed = "0.18s" }) {
 }
 
 function CinematicScreen({ elapsed, onSkip }) {
-  const lineIndex = Math.min(CINEMATIC_LINES.length - 1, Math.floor(elapsed / (30 / CINEMATIC_LINES.length)));
-  const pct = Math.min(100, (elapsed / 30) * 100);
+  const [narrationTime, setNarrationTime] = useState(0);
+  const lineIndex = Math.min(CINEMATIC_LINES.length - 1, Math.floor((narrationTime || elapsed) / (CINEMATIC_DURATION_SECONDS / CINEMATIC_LINES.length)));
+  const pct = Math.min(100, (elapsed / CINEMATIC_DURATION_SECONDS) * 100);
+  const narrationRef = useRef(null);
+
+  useEffect(() => {
+    const narration = narrationRef.current;
+    if (!narration) return undefined;
+
+    narration.currentTime = 0;
+    narration.play().catch(() => undefined);
+
+    return () => {
+      narration.pause();
+      narration.currentTime = 0;
+    };
+  }, []);
+
   return (
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-black to-black" />
+      <StarField />
       <Moon phase="🌑" glow={false} />
+      <audio
+        ref={narrationRef}
+        src="/audio/ElevenLabs_Text_to_Speech_audio.mp3"
+        preload="auto"
+        onTimeUpdate={(event) => setNarrationTime(event.currentTarget.currentTime)}
+        onEnded={onSkip}
+        aria-hidden="true"
+      />
       <div aria-hidden="true" className="lightning-flash absolute inset-0 bg-slate-100" />
       <GothamSkyline className="absolute bottom-0 left-0 h-1/2 w-full opacity-70" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
@@ -387,7 +441,7 @@ function CinematicScreen({ elapsed, onSkip }) {
         <SkipForward size={13} className="shrink-0 text-amber-400" />
       </button>
       <div className="relative z-10 max-w-md px-6 text-center">
-        <p key={lineIndex} className="fade-line font-arcade text-[12px] leading-relaxed text-amber-300 sm:text-sm">
+        <p key={lineIndex} role="status" aria-live="polite" className="fade-line font-arcade text-[12px] leading-relaxed text-amber-300 sm:text-sm">
           {CINEMATIC_LINES[lineIndex]}
         </p>
       </div>
@@ -402,6 +456,8 @@ function RoleSelectScreen({ onManager, onClient }) {
   return (
     <div className="relative flex flex-1 min-h-screen w-full flex-col items-center justify-center gap-8 overflow-hidden px-6 py-10 text-center">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 to-black" />
+      <StarField />
+      <Moon />
       <GothamSkyline className="absolute bottom-0 left-0 h-1/3 w-full opacity-60" />
       <div className="relative z-10 flex flex-col items-center gap-2">
         <h2 className="font-arcade text-sm text-amber-400 sm:text-base">CHOOSE YOUR ROLE</h2>
@@ -761,9 +817,9 @@ export default function ClientPortfolioManager() {
     setCinematicElapsed(0);
     const start = Date.now();
     const tick = setInterval(() => {
-      setCinematicElapsed(Math.min(30, Math.round((Date.now() - start) / 1000)));
+      setCinematicElapsed(Math.min(CINEMATIC_DURATION_SECONDS, (Date.now() - start) / 1000));
     }, 250);
-    const done = setTimeout(() => setScreen("roleSelect"), 30000);
+    const done = setTimeout(() => setScreen("roleSelect"), CINEMATIC_DURATION_SECONDS * 1000 + 500);
     return () => {
       clearInterval(tick);
       clearTimeout(done);
