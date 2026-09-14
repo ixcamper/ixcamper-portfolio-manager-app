@@ -41,6 +41,15 @@ const CINEMATIC_LINES = [
 ];
 const CINEMATIC_DURATION_SECONDS = 16.3;
 
+const PRESET_GOALS = [
+	"Buy a home",
+	"Fund education",
+	"Build an emergency reserve",
+	"Retire comfortably",
+	"Reach financial independence",
+	"Grow wealth for family",
+];
+
 const BUILDINGS = [
 	{ x: 0, w: 60, h: 90 }, { x: 60, w: 40, h: 130 }, { x: 100, w: 70, h: 70 }, { x: 170, w: 50, h: 150 },
 	{ x: 220, w: 90, h: 100 }, { x: 310, w: 40, h: 180 }, { x: 350, w: 60, h: 120 }, { x: 410, w: 100, h: 80 },
@@ -270,6 +279,52 @@ function getAssetClassAllocation(c) {
 	return rows.sort((a, b) => b.value - a.value);
 }
 
+function generateYearOutcome(client, game) {
+	const yearSpan = Math.max(1, game.endYear - game.startYear);
+	const yearProgress = (game.currentYear - game.startYear) / yearSpan;
+	const targetForYear = game.initialAum + (game.targetAum - game.initialAum) * yearProgress;
+	const cryptoWeight = client.aum ? (client.cryptoValue / client.aum) * 100 : 0;
+	const changePct = game.initialAum ? ((client.aum - game.initialAum) / game.initialAum) * 100 : 0;
+	const onTrack = client.aum >= targetForYear;
+	const diversified = cryptoWeight <= 35;
+	const positiveBook = client.gain >= 0;
+	const good = (onTrack && positiveBook) || (onTrack && diversified) || (positiveBook && diversified && changePct >= 0);
+	const goals = game.goals?.length ? game.goals : ["Build the strongest possible portfolio"];
+	const goalSummary = goals.join(", ");
+
+	return {
+		year: game.currentYear,
+		status: good ? "good" : "bad",
+		title: good ? "GOTHAM GAINS GROUND" : "THE JOKER STRIKES",
+		summary: good
+			? `${client.name}'s portfolio is on a strong path toward ${goalSummary}. The book is ${onTrack ? "ahead of its yearly target" : "holding its ground"} with ${cryptoWeight.toFixed(0)}% in crypto.`
+			: `${client.name}'s portfolio missed the pace for ${goalSummary}. The next move is to protect capital and rebalance before the next year begins.`,
+		advice: good
+			? "Keep the discipline: lock in the allocation, protect the cash reserve, and avoid chasing a hot position."
+			: cryptoWeight > 35
+				? "Reduce concentration risk and rebuild a cash reserve before adding more volatile positions."
+				: "Review underperformers, strengthen the core allocation, and make the next contribution count.",
+		aum: client.aum,
+		changePct,
+		targetForYear,
+	};
+}
+
+function calculateFinalScore(game, client) {
+	const results = [...game.history, game.resolved].filter(Boolean);
+	const goodYears = results.filter((result) => result.status === "good").length;
+	const yearlyScore = results.length ? (goodYears / results.length) * 60 : 0;
+	const targetScore = Math.max(0, Math.min(30, game.targetAum ? (client.aum / game.targetAum) * 30 : 0));
+	const disciplineScore = client.cryptoValue / (client.aum || 1) <= 0.35 ? 10 : 0;
+	const score = Math.round(yearlyScore + targetScore + disciplineScore);
+	return {
+		score,
+		goodYears,
+		totalYears: results.length,
+		win: score >= 60,
+	};
+}
+
 function sliceColorFor(row, i) {
 	return row.color || (row.key === "cash" ? CASH_COLOR : SLICE_COLORS[i % SLICE_COLORS.length]);
 }
@@ -401,6 +456,7 @@ function SplashScreen({ onBegin }) {
 			<RainLayer />
 			<GothamSkyline className="absolute bottom-0 left-0 h-1/2 w-full opacity-90" />
 			<div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
+			<AmbientBats />
 			<div className="relative z-10 flex flex-col items-center gap-4 px-6 text-center">
 				<BatIcon className="h-16 w-16 text-amber-400" />
 				<h1 className="font-arcade title-glow text-xl text-amber-400 sm:text-3xl">WAYNE WEALTH ARCADE</h1>
@@ -422,7 +478,8 @@ function FlappingBat({ className = "", wingSpeed = "0.18s" }) {
 		<div className={`pointer-events-none select-none ${className}`}>
 			<svg
 				viewBox="0 0 100 60"
-				className="h-10 w-16 fill-current text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.85)]"
+				className="h-10 w-16"
+				fill="#1f2937"
 			>
 				<g className="bat-wing-left" style={{ animationDuration: wingSpeed }}>
 					<path d="M50 30 Q 30 2 5 14 Q 20 38 35 38 Q 45 42 50 30 Z" />
@@ -431,10 +488,19 @@ function FlappingBat({ className = "", wingSpeed = "0.18s" }) {
 					<path d="M50 30 Q 70 2 95 14 Q 80 38 65 38 Q 55 42 50 30 Z" />
 				</g>
 				<path d="M46 22 L43 14 L48 18 L52 18 L57 14 L54 22 Q 56 30 50 34 Q 44 30 46 22 Z" />
-				<circle cx="47.5" cy="22" r="1.2" fill="#ffffff" />
-				<circle cx="52.5" cy="22" r="1.2" fill="#ffffff" />
+				<circle cx="47.5" cy="22" r="1.2" fill="#fbbf24" />
+				<circle cx="52.5" cy="22" r="1.2" fill="#fbbf24" />
 			</svg>
 		</div>
+	);
+}
+
+function AmbientBats() {
+	return (
+		<>
+			<FlappingBat className="bat-fly absolute z-[5]" wingSpeed="0.16s" />
+			<FlappingBat className="bat-fly-2 absolute z-[5] scale-75 opacity-80" wingSpeed="0.22s" />
+		</>
 	);
 }
 
@@ -506,6 +572,7 @@ function RoleSelectScreen({ onManager, onClient }) {
 			<CloudLayer />
 			<RainLayer />
 			<GothamSkyline className="absolute bottom-0 left-0 h-1/3 w-full opacity-60" />
+			<AmbientBats />
 			<div className="relative z-10 flex flex-col items-center gap-2">
 				<h2 className="font-arcade text-sm text-amber-400 sm:text-base">CHOOSE YOUR ROLE</h2>
 				<p className="text-sm text-slate-400">How will you play tonight?</p>
@@ -538,6 +605,7 @@ function ClientSelectScreen({ clients, onPick, onBack }) {
 	return (
 		<div className="relative flex flex-1 min-h-screen w-full flex-col items-center gap-6 overflow-hidden px-6 py-10">
 			<div className="absolute inset-0 bg-gradient-to-b from-slate-950 to-black" />
+			<AmbientBats />
 			<div className="relative z-10 flex w-full max-w-3xl items-center justify-between">
 				<button type="button" onClick={onBack} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
 					<LogOut size={13} className="rotate-180" /> Back
@@ -858,6 +926,14 @@ export default function ClientPortfolioManager() {
 
 	const [editingHoldingId, setEditingHoldingId] = useState(null);
 	const [editValues, setEditValues] = useState({ shares: "", price: "" });
+	const [gameSetup, setGameSetup] = useState({
+		startYear: new Date().getFullYear(),
+		endYear: new Date().getFullYear() + 3,
+		goals: [""],
+		targetAum: "",
+	});
+	const [gameState, setGameState] = useState(null);
+	const [finalModalOpen, setFinalModalOpen] = useState(false);
 
 	useEffect(() => {
 		if (screen !== "cinematic") return undefined;
@@ -955,11 +1031,68 @@ export default function ClientPortfolioManager() {
 		setEditingHoldingId(null);
 	}
 
+	function startPortfolioGame() {
+		if (!selectedClient) return;
+		const startYear = Number(gameSetup.startYear);
+		const endYear = Number(gameSetup.endYear);
+		if (!Number.isFinite(startYear) || !Number.isFinite(endYear) || endYear < startYear) return;
+		setGameState({
+			clientId: selectedClient.id,
+			startYear,
+			endYear,
+			currentYear: startYear,
+			goals: gameSetup.goals.map((goal) => goal.trim()).filter(Boolean),
+			initialAum: selectedClient.aum,
+			targetAum: Number(gameSetup.targetAum) || Math.round(selectedClient.aum * 1.25),
+			history: [],
+			resolved: null,
+		});
+		setFinalModalOpen(false);
+	}
+
+	function resolveCurrentYear() {
+		if (!selectedClient || !gameState || gameState.resolved) return;
+		setGameState((currentGame) => ({
+			...currentGame,
+			resolved: generateYearOutcome(selectedClient, currentGame),
+		}));
+		if (gameState.currentYear === gameState.endYear) setFinalModalOpen(true);
+	}
+
+	function advancePortfolioYear() {
+		if (!gameState?.resolved || gameState.currentYear >= gameState.endYear) return;
+		setGameState((currentGame) => ({
+			...currentGame,
+			currentYear: currentGame.currentYear + 1,
+			history: [...currentGame.history, currentGame.resolved],
+			resolved: null,
+		}));
+	}
+
+	function resetPortfolioGame() {
+		setGameState(null);
+		setFinalModalOpen(false);
+	}
+
+	function addPresetGoal(goal) {
+		setGameSetup((value) => {
+			if (value.goals.includes(goal)) return value;
+			const emptyIndex = value.goals.findIndex((item) => !item.trim());
+			if (emptyIndex >= 0) {
+				return { ...value, goals: value.goals.map((item, index) => index === emptyIndex ? goal : item) };
+			}
+			return { ...value, goals: [...value.goals, goal] };
+		});
+	}
+
 	/* ---------------- chart data (manager view) ---------------- */
 
 	const chartData = useMemo(() => getAssetClassAllocation(selectedClient), [selectedClient]);
 
 	const chartTotal = chartData.reduce((s, r) => s + r.value, 0);
+	const finalScore = gameState?.resolved && gameState.currentYear === gameState.endYear && selectedClient
+		? calculateFinalScore(gameState, selectedClient)
+		: null;
 
 	/* ---------------------------------------------------------------
 	   Render
@@ -968,211 +1101,211 @@ export default function ClientPortfolioManager() {
 	return (
 		<div className="min-h-screen w-full bg-slate-950 flex flex-col" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
 			<style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-        .font-arcade { font-family: 'Press Start 2P', monospace; }
-        .font-score { font-family: 'VT323', monospace; font-variant-numeric: tabular-nums; }
-        .cabinet-frame {
-          box-shadow: inset 0 0 80px rgba(0,0,0,.7);
-        }
-        .scanlines {
-          background-image: repeating-linear-gradient(rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 3px);
-        }
-        .title-glow { text-shadow: 0 0 6px rgba(251,191,36,.9), 0 0 22px rgba(251,191,36,.45); }
-        @keyframes blinker { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
-        .blink-cursor { animation: blinker 1s steps(1) infinite; }
-        @keyframes fadeline { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-line { animation: fadeline 0.6s ease; }
-		@keyframes starTwinkle {
-			0%, 100% { opacity: 0.25; transform: scale(0.8); }
-			50% { opacity: 0.75; transform: scale(1.2); }
-		}
-		.star-point { animation: starTwinkle 2.8s ease-in-out infinite; }
-		.star-bright { animation-duration: 2.2s; box-shadow: 0 0 5px rgba(253,230,138,.7); }
-        
-		#clouds{
-			position: absolute;
-			inset: 0;
-			overflow: hidden;
-			z-index: 0;
-		}
+				@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+				.font-arcade { font-family: 'Press Start 2P', monospace; }
+				.font-score { font-family: 'VT323', monospace; font-variant-numeric: tabular-nums; }
+				.cabinet-frame {
+				box-shadow: inset 0 0 80px rgba(0,0,0,.7);
+				}
+				.scanlines {
+				background-image: repeating-linear-gradient(rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 3px);
+				}
+				.title-glow { text-shadow: 0 0 6px rgba(251,191,36,.9), 0 0 22px rgba(251,191,36,.45); }
+				@keyframes blinker { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+				.blink-cursor { animation: blinker 1s steps(1) infinite; }
+				@keyframes fadeline { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+				.fade-line { animation: fadeline 0.6s ease; }
+				@keyframes starTwinkle {
+					0%, 100% { opacity: 0.25; transform: scale(0.8); }
+					50% { opacity: 0.75; transform: scale(1.2); }
+				}
+				.star-point { animation: starTwinkle 2.8s ease-in-out infinite; }
+				.star-bright { animation-duration: 2.2s; box-shadow: 0 0 5px rgba(253,230,138,.7); }
+				
+				#clouds{
+					position: absolute;
+					inset: 0;
+					overflow: hidden;
+					z-index: 0;
+				}
 
-		/*Time to finalise the cloud shape*/
-		.cloud {
-			width: clamp(120px, 16vw, 200px);
-			aspect-ratio: 10 / 3;
-			background: #fff;
-			
-			border-radius: 200px;
-			-moz-border-radius: 200px;
-			-webkit-border-radius: 200px;
-			
-			position: absolute;
-			left: 100%;
-			margin-left: 0;
-		}
+				/*Time to finalise the cloud shape*/
+				.cloud {
+					width: clamp(120px, 16vw, 200px);
+					aspect-ratio: 10 / 3;
+					background: #fff;
+					
+					border-radius: 200px;
+					-moz-border-radius: 200px;
+					-webkit-border-radius: 200px;
+					
+					position: absolute;
+					left: 100%;
+					margin-left: 0;
+				}
 
-		.cloud:before, .cloud:after {
-			content: '';
-			position: absolute; 
-			background: #fff;
-			width: 50%; height: 133%;
-			top: -25%; left: 5%;
-			
-			border-radius: 100px;
-			-moz-border-radius: 100px;
-			-webkit-border-radius: 100px;
-			
-			-webkit-transform: rotate(30deg);
-			transform: rotate(30deg);
-			-moz-transform: rotate(30deg);
-		}
+				.cloud:before, .cloud:after {
+					content: '';
+					position: absolute; 
+					background: #fff;
+					width: 50%; height: 133%;
+					top: -25%; left: 5%;
+					
+					border-radius: 100px;
+					-moz-border-radius: 100px;
+					-webkit-border-radius: 100px;
+					
+					-webkit-transform: rotate(30deg);
+					transform: rotate(30deg);
+					-moz-transform: rotate(30deg);
+				}
 
-		.cloud:after {
-			width: 60%; height: 200%;
-			top: -92%; left: auto; right: 7.5%;
-		}
+				.cloud:after {
+					width: 60%; height: 200%;
+					top: -92%; left: auto; right: 7.5%;
+				}
 
-		/*Time to animate*/
-		.x1 {
-			top: 12%;
-			-webkit-animation: moveclouds 15s linear infinite;
-			-moz-animation: moveclouds 15s linear infinite;
-			-o-animation: moveclouds 15s linear infinite;
-			animation: moveclouds 15s linear infinite;
-			animation-delay: -2.5s;
-		}
+				/*Time to animate*/
+				.x1 {
+					top: 12%;
+					-webkit-animation: moveclouds 15s linear infinite;
+					-moz-animation: moveclouds 15s linear infinite;
+					-o-animation: moveclouds 15s linear infinite;
+					animation: moveclouds 15s linear infinite;
+					animation-delay: -2.5s;
+				}
 
-		/*variable speed, opacity, and position of clouds for realistic effect*/
-		.x2 {
-			top: 38%;
-			
-			-webkit-transform: scale(0.6);
-			-moz-transform: scale(0.6);
-			transform: scale(0.6);
-			opacity: 0.6; /*opacity proportional to the size*/
-			
-			/*Speed will also be proportional to the size and opacity*/
-			/*More the speed. Less the time in 's' = seconds*/
-			-webkit-animation: moveclouds 25s linear infinite;
-			-moz-animation: moveclouds 25s linear infinite;
-			-o-animation: moveclouds 25s linear infinite;
-			animation: moveclouds 25s linear infinite;
-			animation-delay: -14s;
-		}
+				/*variable speed, opacity, and position of clouds for realistic effect*/
+				.x2 {
+					top: 38%;
+					
+					-webkit-transform: scale(0.6);
+					-moz-transform: scale(0.6);
+					transform: scale(0.6);
+					opacity: 0.6; /*opacity proportional to the size*/
+					
+					/*Speed will also be proportional to the size and opacity*/
+					/*More the speed. Less the time in 's' = seconds*/
+					-webkit-animation: moveclouds 25s linear infinite;
+					-moz-animation: moveclouds 25s linear infinite;
+					-o-animation: moveclouds 25s linear infinite;
+					animation: moveclouds 25s linear infinite;
+					animation-delay: -14s;
+				}
 
-		.x3 {
-			top: 21%;
-			
-			-webkit-transform: scale(0.8);
-			-moz-transform: scale(0.8);
-			transform: scale(0.8);
-			opacity: 0.8; /*opacity proportional to the size*/
-			
-			-webkit-animation: moveclouds 20s linear infinite;
-			-moz-animation: moveclouds 20s linear infinite;
-			-o-animation: moveclouds 20s linear infinite;
-			animation: moveclouds 20s linear infinite;
-			animation-delay: -7s;
-		}
+				.x3 {
+					top: 21%;
+					
+					-webkit-transform: scale(0.8);
+					-moz-transform: scale(0.8);
+					transform: scale(0.8);
+					opacity: 0.8; /*opacity proportional to the size*/
+					
+					-webkit-animation: moveclouds 20s linear infinite;
+					-moz-animation: moveclouds 20s linear infinite;
+					-o-animation: moveclouds 20s linear infinite;
+					animation: moveclouds 20s linear infinite;
+					animation-delay: -7s;
+				}
 
-		.x4 {
-			top: 64%;
-			
-			-webkit-transform: scale(0.75);
-			-moz-transform: scale(0.75);
-			transform: scale(0.75);
-			opacity: 0.75; /*opacity proportional to the size*/
-			
-			-webkit-animation: moveclouds 18s linear infinite;
-			-moz-animation: moveclouds 18s linear infinite;
-			-o-animation: moveclouds 18s linear infinite;
-			animation: moveclouds 18s linear infinite;
-			animation-delay: -11.5s;
-		}
+				.x4 {
+					top: 64%;
+					
+					-webkit-transform: scale(0.75);
+					-moz-transform: scale(0.75);
+					transform: scale(0.75);
+					opacity: 0.75; /*opacity proportional to the size*/
+					
+					-webkit-animation: moveclouds 18s linear infinite;
+					-moz-animation: moveclouds 18s linear infinite;
+					-o-animation: moveclouds 18s linear infinite;
+					animation: moveclouds 18s linear infinite;
+					animation-delay: -11.5s;
+				}
 
-		.x5 {
-			top: 49%;
-			
-			-webkit-transform: scale(0.8);
-			-moz-transform: scale(0.8);
-			transform: scale(0.8);
-			opacity: 0.8; /*opacity proportional to the size*/
-			
-			-webkit-animation: moveclouds 20s linear infinite;
-			-moz-animation: moveclouds 20s linear infinite;
-			-o-animation: moveclouds 20s linear infinite;
-			animation: moveclouds 20s linear infinite;
-			animation-delay: -3.5s;
-		}
+				.x5 {
+					top: 49%;
+					
+					-webkit-transform: scale(0.8);
+					-moz-transform: scale(0.8);
+					transform: scale(0.8);
+					opacity: 0.8; /*opacity proportional to the size*/
+					
+					-webkit-animation: moveclouds 20s linear infinite;
+					-moz-animation: moveclouds 20s linear infinite;
+					-o-animation: moveclouds 20s linear infinite;
+					animation: moveclouds 20s linear infinite;
+					animation-delay: -3.5s;
+				}
 
-		@-webkit-keyframes moveclouds {
-			0% { margin-left: 0; }
-			100% { margin-left: calc(-100vw - 450px); }
-		}
-		@-moz-keyframes moveclouds {
-			0% { margin-left: 0; }
-			100% { margin-left: calc(-100vw - 450px); }
-		}
-		@-o-keyframes moveclouds {
-			0% { margin-left: 0; }
-			100% { margin-left: calc(-100vw - 450px); }
-		}
-		@keyframes moveclouds {
-			0% { margin-left: 0; }
-			100% { margin-left: calc(-100vw - 450px); }
-		}
-	
-        @keyframes rainFall { from { transform: translate3d(0, -12vh, 0) rotate(16deg); } to { transform: translate3d(-7vw, 112vh, 0) rotate(16deg); } }
-        .rain-drop { animation: rainFall linear infinite; }
-        @keyframes lightningflash {
-          0%, 92%, 100% { opacity: 0; }
-          93% { opacity: 0.5; }
-          94% { opacity: 0; }
-          96% { opacity: 0.3; }
-          97% { opacity: 0; }
-        }
-        .lightning-flash { animation: lightningflash 7s linear infinite; }
-        @keyframes batSwoop {
-          0% { transform: translate(-15vw, 42vh) scale(0.5) rotate(-14deg); opacity: 0; }
-          12% { opacity: 0.95; }
-          38% { transform: translate(32vw, 12vh) scale(0.9) rotate(12deg); }
-          68% { transform: translate(68vw, 26vh) scale(1.2) rotate(-16deg); }
-          88% { opacity: 0.95; }
-          100% { transform: translate(118vw, 4vh) scale(1.65) rotate(20deg); opacity: 0; }
-        }
-        @keyframes batSwoop2 {
-          0% { transform: translate(-20vw, 18vh) scale(0.35) rotate(16deg); opacity: 0; }
-          15% { opacity: 0.85; }
-          52% { transform: translate(48vw, 36vh) scale(0.65) rotate(-12deg); }
-          84% { opacity: 0.85; }
-          100% { transform: translate(112vw, 12vh) scale(0.95) rotate(14deg); opacity: 0; }
-        }
-        @keyframes wingFlapLeft {
-          0% { transform: rotate(0deg) scaleY(1); }
-          50% { transform: rotate(-36deg) scaleY(0.35); }
-          100% { transform: rotate(18deg) scaleY(1.15); }
-        }
-        @keyframes wingFlapRight {
-          0% { transform: rotate(0deg) scaleY(1); }
-          50% { transform: rotate(36deg) scaleY(0.35); }
-          100% { transform: rotate(-18deg) scaleY(1.15); }
-        }
-        .bat-wing-left {
-          transform-origin: 50px 30px;
-          animation: wingFlapLeft 0.18s ease-in-out infinite alternate;
-        }
-        .bat-wing-right {
-          transform-origin: 50px 30px;
-          animation: wingFlapRight 0.18s ease-in-out infinite alternate;
-        }
-        .bat-fly { animation: batSwoop 6.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; top: 8%; left: 0; }
-        .bat-fly-2 { animation: batSwoop2 8.8s cubic-bezier(0.45, 0, 0.55, 1) 2.2s infinite; top: 4%; left: 0; }
-        @media (prefers-reduced-motion: reduce) {
-		  .lightning-flash, .bat-fly, .bat-fly-2, .rain-drop, .star-point { animation: none !important; opacity: 0.55; transform: none; }
-          .blink-cursor { animation: none !important; opacity: 1; }
-          .fade-line { animation: none !important; }
-        }
-      `}</style>
+				@-webkit-keyframes moveclouds {
+					0% { margin-left: 0; }
+					100% { margin-left: calc(-100vw - 450px); }
+				}
+				@-moz-keyframes moveclouds {
+					0% { margin-left: 0; }
+					100% { margin-left: calc(-100vw - 450px); }
+				}
+				@-o-keyframes moveclouds {
+					0% { margin-left: 0; }
+					100% { margin-left: calc(-100vw - 450px); }
+				}
+				@keyframes moveclouds {
+					0% { margin-left: 0; }
+					100% { margin-left: calc(-100vw - 450px); }
+				}
+			
+				@keyframes rainFall { from { transform: translate3d(0, -12vh, 0) rotate(16deg); } to { transform: translate3d(-7vw, 112vh, 0) rotate(16deg); } }
+				.rain-drop { animation: rainFall linear infinite; }
+				@keyframes lightningflash {
+				0%, 92%, 100% { opacity: 0; }
+				93% { opacity: 0.5; }
+				94% { opacity: 0; }
+				96% { opacity: 0.3; }
+				97% { opacity: 0; }
+				}
+				.lightning-flash { animation: lightningflash 7s linear infinite; }
+				@keyframes batSwoop {
+				0% { transform: translate(-15vw, 42vh) scale(0.5) rotate(-14deg); opacity: 0; }
+				12% { opacity: 0.95; }
+				38% { transform: translate(32vw, 12vh) scale(0.9) rotate(12deg); }
+				68% { transform: translate(68vw, 26vh) scale(1.2) rotate(-16deg); }
+				88% { opacity: 0.95; }
+				100% { transform: translate(118vw, 4vh) scale(1.65) rotate(20deg); opacity: 0; }
+				}
+				@keyframes batSwoop2 {
+				0% { transform: translate(-20vw, 18vh) scale(0.35) rotate(16deg); opacity: 0; }
+				15% { opacity: 0.85; }
+				52% { transform: translate(48vw, 36vh) scale(0.65) rotate(-12deg); }
+				84% { opacity: 0.85; }
+				100% { transform: translate(112vw, 12vh) scale(0.95) rotate(14deg); opacity: 0; }
+				}
+				@keyframes wingFlapLeft {
+				0% { transform: rotate(0deg) scaleY(1); }
+				50% { transform: rotate(-36deg) scaleY(0.35); }
+				100% { transform: rotate(18deg) scaleY(1.15); }
+				}
+				@keyframes wingFlapRight {
+				0% { transform: rotate(0deg) scaleY(1); }
+				50% { transform: rotate(36deg) scaleY(0.35); }
+				100% { transform: rotate(-18deg) scaleY(1.15); }
+				}
+				.bat-wing-left {
+				transform-origin: 50px 30px;
+				animation: wingFlapLeft 0.18s ease-in-out infinite alternate;
+				}
+				.bat-wing-right {
+				transform-origin: 50px 30px;
+				animation: wingFlapRight 0.18s ease-in-out infinite alternate;
+				}
+				.bat-fly { animation: batSwoop 6.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; top: 8%; left: 0; }
+				.bat-fly-2 { animation: batSwoop2 8.8s cubic-bezier(0.45, 0, 0.55, 1) 2.2s infinite; top: 4%; left: 0; }
+				@media (prefers-reduced-motion: reduce) {
+				.lightning-flash, .bat-fly, .bat-fly-2, .rain-drop, .star-point { animation: none !important; opacity: 0.55; transform: none; }
+				.blink-cursor { animation: none !important; opacity: 1; }
+				.fade-line { animation: none !important; }
+				}
+			`}</style>
 
 			<div className="relative w-full flex-1 min-h-screen overflow-hidden bg-slate-950 cabinet-frame flex flex-col">
 				<div className="pointer-events-none absolute inset-0 z-20 scanlines" />
@@ -1331,7 +1464,11 @@ export default function ClientPortfolioManager() {
 											<button
 												key={c.id}
 												type="button"
-												onClick={() => setSelectedId(c.id)}
+												onClick={() => {
+													setSelectedId(c.id);
+													setGameState(null);
+													setFinalModalOpen(false);
+												}}
 												className={`flex w-full items-center justify-between gap-2 border-l-2 px-4 py-3 text-left transition focus:outline-none ${active ? "border-amber-400 bg-amber-500/10" : "border-transparent hover:bg-slate-800/60"
 													}`}
 											>
@@ -1399,6 +1536,133 @@ export default function ClientPortfolioManager() {
 												</button>
 											)}
 										</div>
+
+										{/* Goal game */}
+										{(!gameState || gameState.clientId !== selectedClient.id) ? (
+											<div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
+												<div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+													<div>
+														<h3 className="font-arcade text-[11px] text-amber-400">START A PORTFOLIO RUN</h3>
+														<p className="mt-1 text-xs text-slate-400">Set a target, manage each year, and see whether Gotham comes out ahead.</p>
+													</div>
+												</div>
+												<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+													<div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-4">
+														<span className="text-xs text-slate-400">Goals</span>
+														<div className="flex flex-wrap gap-1.5">
+															{PRESET_GOALS.map((preset) => (
+																<button
+																	key={preset}
+																	type="button"
+																	onClick={() => addPresetGoal(preset)}
+																	className={`rounded-full border px-2 py-1 text-[11px] transition ${gameSetup.goals.includes(preset) ? "border-amber-400/60 bg-amber-500/15 text-amber-300" : "border-slate-700 text-slate-400 hover:border-amber-400/60 hover:text-amber-300"}`}
+																>
+																	+ {preset}
+																</button>
+															))}
+														</div>
+														{gameSetup.goals.map((goal, index) => (
+															<div key={index} className="flex gap-2">
+																<input
+																	value={goal}
+																	onChange={(e) => setGameSetup((value) => ({ ...value, goals: value.goals.map((item, itemIndex) => itemIndex === index ? e.target.value : item) }))}
+																	placeholder={index === 0 ? "Buy the Batwing" : "Add another goal"}
+																	className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+																/>
+																<button
+																	type="button"
+																	onClick={() => setGameSetup((value) => ({ ...value, goals: value.goals.length > 1 ? value.goals.filter((_, itemIndex) => itemIndex !== index) : value.goals }))}
+																	disabled={gameSetup.goals.length === 1}
+																	className="rounded-md border border-slate-600 px-2.5 text-xs text-slate-400 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+																	aria-label={`Remove goal ${index + 1}`}
+																>
+																	<X size={14} />
+																</button>
+															</div>
+														))}
+														<button
+															type="button"
+															onClick={() => setGameSetup((value) => ({ ...value, goals: [...value.goals, ""] }))}
+															className="self-start text-xs font-medium text-amber-300 hover:text-amber-200"
+														>
+															+ Add goal
+														</button>
+													</div>
+													<label className="flex flex-col gap-1 text-xs text-slate-400">
+														Target AUM
+														<input
+															type="number"
+															value={gameSetup.targetAum}
+															onChange={(e) => setGameSetup((value) => ({ ...value, targetAum: e.target.value }))}
+															placeholder={String(Math.round(selectedClient.aum * 1.25))}
+															className="font-score rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-base text-slate-100 placeholder-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+														/>
+													</label>
+													<label className="flex flex-col gap-1 text-xs text-slate-400">
+														Start year
+														<input
+															type="number"
+															value={gameSetup.startYear}
+															onChange={(e) => setGameSetup((value) => ({ ...value, startYear: e.target.value }))}
+															className="font-score rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-base text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+														/>
+													</label>
+													<label className="flex flex-col gap-1 text-xs text-slate-400">
+														End year
+														<input
+															type="number"
+															value={gameSetup.endYear}
+															onChange={(e) => setGameSetup((value) => ({ ...value, endYear: e.target.value }))}
+															className="font-score rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-base text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+														/>
+													</label>
+												</div>
+												<button
+													type="button"
+													onClick={startPortfolioGame}
+													className="mt-3 rounded-md border-2 border-amber-400 bg-amber-500 px-3 py-1.5 text-sm font-semibold text-slate-950 hover:bg-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+												>
+													Start run
+												</button>
+											</div>
+										) : (
+											<div className="rounded-md border border-amber-500/30 bg-slate-900 p-4">
+												<div className="flex flex-wrap items-start justify-between gap-3">
+													<div>
+														<div className="flex flex-wrap items-center gap-2">
+															<h3 className="font-arcade text-[11px] text-amber-400">PORTFOLIO RUN</h3>
+															<span className="rounded-full border border-slate-600 px-2 py-0.5 text-xs text-slate-300">{gameState.startYear}-{gameState.endYear}</span>
+														</div>
+														<p className="mt-1 text-sm text-slate-300">Year {gameState.currentYear}: {gameState.goals?.join(", ") || "Build the strongest possible portfolio"}</p>
+														<p className="text-xs text-slate-500">Target AUM by {gameState.endYear}: {fmtUSD0(gameState.targetAum)}</p>
+													</div>
+													<div className="flex items-center gap-2">
+														{!gameState.resolved && <span className="text-xs text-amber-300">Edit holdings, then resolve the year</span>}
+														<button type="button" onClick={resetPortfolioGame} className="rounded-md border border-slate-600 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800">Reset run</button>
+													</div>
+												</div>
+												{gameState.resolved ? (
+													<div className={`mt-4 rounded-md border p-3 ${gameState.resolved.status === "good" ? "border-emerald-400/40 bg-emerald-500/10" : "border-red-400/40 bg-red-500/10"}`}>
+														<div className="flex flex-wrap items-center justify-between gap-2">
+															<div className={`font-arcade text-[11px] ${gameState.resolved.status === "good" ? "text-emerald-300" : "text-red-300"}`}>{gameState.resolved.title}</div>
+															<span className="font-score text-lg text-slate-200">{fmtUSD0(gameState.resolved.aum)} · {fmtPct(gameState.resolved.changePct)}</span>
+														</div>
+														<p className="mt-2 text-sm text-slate-200">{gameState.resolved.summary}</p>
+														<p className="mt-2 text-xs text-slate-400">Analyst: {gameState.resolved.advice}</p>
+														{gameState.currentYear < gameState.endYear ? (
+															<button type="button" onClick={advancePortfolioYear} className="mt-3 rounded-md border border-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/10">Advance to {gameState.currentYear + 1}</button>
+														) : <p className="mt-3 text-xs font-semibold text-amber-300">Run complete. The final year has been resolved.</p>}
+													</div>
+												) : (
+													<button type="button" onClick={resolveCurrentYear} className="mt-4 rounded-md border-2 border-amber-400 bg-amber-500 px-3 py-1.5 text-sm font-semibold text-slate-950 hover:bg-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">Resolve year {gameState.currentYear}</button>
+												)}
+												{gameState.history.length > 0 && (
+													<div className="mt-4 flex flex-wrap gap-2 border-t border-slate-700 pt-3">
+														{gameState.history.map((result) => <span key={result.year} className={`rounded-full border px-2 py-1 text-xs ${result.status === "good" ? "border-emerald-400/40 text-emerald-300" : "border-red-400/40 text-red-300"}`}>{result.year}: {result.status}</span>)}
+													</div>
+												)}
+											</div>
+										)}
 
 										{/* Summary strip */}
 										<div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-slate-700 bg-slate-700 sm:grid-cols-5">
@@ -1703,6 +1967,41 @@ export default function ClientPortfolioManager() {
 							</div>
 						</div>
 					</>
+				)}
+
+				{finalModalOpen && finalScore && selectedClient && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="final-score-title">
+						<div className={`relative w-full max-w-lg overflow-hidden rounded-xl border-2 p-6 shadow-2xl ${finalScore.win ? "border-emerald-300 bg-[radial-gradient(circle_at_top,#064e3b,#0f172a_62%)] shadow-emerald-950/60" : "border-red-400 bg-[radial-gradient(circle_at_top,#450a0a,#0f172a_62%)] shadow-red-950/60"}`}>
+							<button
+								type="button"
+								onClick={() => setFinalModalOpen(false)}
+								aria-label="Close final score"
+								className="absolute right-4 top-4 rounded p-1 text-slate-300 hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+							>
+								<X size={18} />
+							</button>
+							<div className="text-center">
+								<div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 text-3xl ${finalScore.win ? "border-emerald-300 bg-emerald-400/20" : "border-red-300 bg-red-400/20"}`}>
+									{finalScore.win ? "B" : "J"}
+								</div>
+								<p className={`font-arcade text-[11px] ${finalScore.win ? "text-emerald-300" : "text-red-300"}`}>{finalScore.win ? "MISSION ACCOMPLISHED" : "GOTHAM FALLS"}</p>
+								<h2 id="final-score-title" className="mt-3 font-arcade text-lg text-slate-100">{finalScore.win ? "THE CITY IS SAFE" : "THE JOKER WINS"}</h2>
+								<p className="mt-2 text-sm text-slate-300">{selectedClient.name}'s {gameState.startYear}-{gameState.endYear} portfolio run is complete.</p>
+								<div className="my-6 flex items-center justify-center gap-8">
+									<div>
+										<div className={`font-score text-6xl ${finalScore.win ? "text-emerald-300" : "text-red-300"}`}>{finalScore.score}</div>
+										<div className="text-xs uppercase tracking-widest text-slate-400">Final score</div>
+									</div>
+									<div className="text-left text-sm text-slate-300">
+										<div><span className="font-score text-xl text-slate-100">{finalScore.goodYears}/{finalScore.totalYears}</span> good years</div>
+										<div className="mt-1 text-xs text-slate-500">Target: {fmtUSD0(gameState.targetAum)}</div>
+									</div>
+								</div>
+								<p className="text-sm text-slate-300">{finalScore.win ? "Your decisions built a resilient book and kept Gotham's future funded." : "The book needs a stronger strategy. Rebalance, learn from the losses, and run it again."}</p>
+								<button type="button" onClick={() => setFinalModalOpen(false)} className={`mt-6 rounded-md border-2 px-5 py-2 text-sm font-semibold ${finalScore.win ? "border-emerald-300 bg-emerald-400 text-slate-950 hover:bg-emerald-300" : "border-red-300 bg-red-400 text-slate-950 hover:bg-red-300"}`}>Continue</button>
+							</div>
+						</div>
+					</div>
 				)}
 			</div>
 		</div>
